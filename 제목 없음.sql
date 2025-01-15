@@ -161,4 +161,139 @@ FROM emp;
 SELECT ename
 FROM emp
 WHERE INSTR(ename, 'LL') > 0;
+
+
+CREATE TABLE dept(
+deptno NUMBER(3) PRIMARY KEY,
+dname VARCHAR2(10) UNIQUE,
+loc VARCHAR2(10));
+
+CREATE TABLE EMP(
+empno NUMBER(3) PRIMARY KEY,
+ename VARCHAR2(10) NOT NULL,
+deptno NUMBER(3),
+job VARCHAR2(10),
+sal NUMBER(10),
+hiredate date default sysdate,
+sex VARCHAR2(4) CHECK (sex = '남' OR sex = '여' OR sex = '남자' OR sex = '여자' ),
+mgr NUMBER(3)
+)
+
+CREATE TABLE customer(
+cno NUMBER(3) PRIMARY KEY,
+cname VARCHAR2(10),
+ctel VARCHAR2(20),
+crrn VARCHAR2(14) UNIQUE,
+cmgr NUMBER(3)
+)
+
+ALTER TABLE emp
+ADD CONSTRAINTS deptno_FK FOREIGN KEY (deptno) 
+REFERENCES dept(deptno);
+
+ALTER TABLE customer
+ADD CONSTRAINTS cmgr_FK FOREIGN KEY (cmgr)
+REFERENCES emp(empno);
+
+ALTER TABLE emp
+ADD CONSTRAINTS mgr_FK FOREIGN KEY(mgr)
+REFERENCES emp(empno);
+
+
+
+Insert Into Dept Values(10, '총무부','서울');
+Insert Into Dept Values(20, '영업부','대전');
+Insert Into Dept Values(30, '전산부','부산');
+Insert Into Dept Values(40, '관리부', '광주');
+
+Insert Into emp Values(1,'홍길동',10,'회장',5000,'1980/01/01','남',null);
+Insert Into emp Values(2,'한국남',20,'부장',3000,'1988/11/01', '남',1);
+Insert Into emp Values(3,'이순신',20,'과장',3500,'1985/03/01','남', 2);
+Insert Into emp Values(5,'이순라',20,'사원',1200,'1990/05/01','여', 3);
+Insert Into emp Values(7,'놀기만',20,'과장',2300,'1996/06/01','여', 2);
+Insert Into emp Values(11,'류별나',20,'과장',1600,'1989/12/01','여', 2);
+Insert Into emp Values(14,'채시라',20,'사원',3400,'1993/10/01','여', 3);
+Insert Into emp Values(17,'이성계',30,'부장',2803,'1984/05/01','남', 1);
+Insert Into emp Values(13,'무궁화',10,'부장',3000,'1996/11/01','여', 1);
+Insert Into emp Values(19,'임꺽정',20,'사원',2200,'1988/04/01','남', 7);
+Insert Into emp Values(20,'깨똥이',10,'과장',4500,'1990/05/01','남', 13);
+Insert Into emp Values(6,'공부만',30,'과장',4003,'1995/05/01','남', 17);
+Insert Into emp Values(8,'채송화',30,'대리',1703,'1992/06/01','여', 17);
+Insert Into emp Values(12,'류명한',10,'대리',1800,'1990/10/01','남', 20);
+Insert Into emp Values(9,'무궁화',10,'사원',1100,'1984/08/01','여', 12);
+Insert Into emp Values(4,'이미라',30,'대리',2503,'1983/04/01','여', 17);
+Insert Into emp Values(10,'공부해',30,'사원',1303,'1988/11/01','남', 4);
+Insert Into emp Values(15,'최진실',10,'사원',2000,'1991/04/01','여', 12);
+Insert Into emp Values(16,'김유신',30,'사원',400,'1981/04/01','남', 4);
+Insert Into emp Values(18,'강감찬',30,'사원',1003,'1986/07/01','남', 4);
+
+
+insert into customer values(1,'류민', '123-1234', '700113-1537915',3);
+insert into customer values(2,'강민', '343-1454', '690216-1627914',2);
+insert into customer values(3,'영희', '144-1655', '750320-2636215',null);
+insert into customer values(4,'철이', '673-1674', '770430-1234567',4);
+insert into customer values(5,'류완', '123-1674', '720521-1123675',3);
+insert into customer values(6,'캔디', '673-1764', '650725-2534566',null);
+insert into customer values(7,'똘이', '176-7677', '630608-1648614',7);
+insert into customer values(8,'쇠돌', '673-6774', '800804-1346574',9);
+insert into customer values(9,'홍이', '767-1234', '731225-1234689',13);
+insert into customer values(10,'안나','767-1677', '751015-2432168',4);
+
+
+
+SELECT * FROM emp;
+DESC emp;
+--사원명, 급여, 월급, 세금(3.3%) 추출
+--단, 월급은 십의자리에서 반올림, 세금은 일의자리까지 제한
+SELECT ename AS "Name",
+        sal AS "Annual salary",
+        ROUND(sal/12, -2) AS "Salary",
+        TRUNC(sal*0.033, -1) AS "Duty"
+from emp;
+
+--사원명, 급여, 급여현황(급여의 100단위 당 '*') 추출
+SELECT ename AS "Name",
+        sal AS "Salay",
+        RPAD('*', TRUNC(sal/100, 0), '*') AS "Salary Status"
+FROM emp;
+
+desc customer;
+--고객명, 전화번호, 주민등록번호1(ex.******-nnnnnnn), 주민번호2(ex.nnnnnn-*******)
+SELECT cname AS "Customer Name",
+        ctel AS "TEL",
+    LPAD(
+        SUBSTR(crrn, INSTR(crrn, '-')),
+        LENGTH(crrn),
+        '*') AS "*RRN",
+    RPAD(
+        SUBSTR(crrn, 1 , INSTR(crrn, '-')),
+        LENGTH(crrn),
+        '*') AS "RRN*"
+FROM CUSTOMER;
+
+
+--고객명, 전화번호, 성별 추출 (decode사용)
+SELECT customer.cname AS "Name",
+        customer.ctel AS "TEL",
+        DECODE(
+            SUBSTR(crrn, INSTR(crrn, '-')+1,1), 1, '남',
+                                                2, '여') AS "SEX"
+FROM customer;
+--사원명, 급여, 보너스를 출력(case문)
+--단, 보너스는 급여가 1000미만은 10%, 1000~2000은 15%, 2000초과는 20%, 없으면 0%
+SELECT ename AS "Name",
+        sal AS "Salary",
+        CASE
+            WHEN sal < 1000 THEN sal*0.1
+            WHEN sal BETWEEN 1000 and 2000 THEN sal*0.15
+            WHEN sal > 2000 THEN sal*0.2
+            ELSE 0
+        END AS "Incentive"
+FROM emp;
+COMMIT;
+
+
+
+
+
 commit;
