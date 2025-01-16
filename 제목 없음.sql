@@ -290,10 +290,260 @@ SELECT ename AS "Name",
             ELSE 0
         END AS "Incentive"
 FROM emp;
+
+
+
+SELECT sysdate, TO_CHAR(sysdate, 'am') FROM DUAL;
+
+
+--현재 날짜를 [yyyy년 m월 d일 w요일] 형태로 추출
+SELECT TO_CHAR(sysdate,
+                'FM" "yyyy"年 "MM"月 "DD"日 "DAY"',
+                'NLS_DATE_LANGUAGE=JAPANESE' ) AS "Now"
+FROM DUAL;
+SELECT TO_CHAR(sysdate, 
+                'FM" "yyyy"year "Month" "MM" "DD" "DY"',
+                'NLS_DATE_LANGUAGE=ENGLISH' ) AS "Now"
+FROM DUAL;
+
+SELECT ename AS "Name",
+        sal AS "Salary",
+        TO_CHAR(sal, 'FM9,990')
+FROM emp
+ORDER BY sal;
+
+--INSERT INTO emp(ename, sal, empno) VALUES('john', 0, 999);
+--DELETE FROM emp WHERE ename = 'john'; 
+
+--사원명, 입사일, 근무기간(ex.yy년 mm개월) 추출
+SELECT ename AS "Name",
+        hiredate AS "Start date",
+        EXTRACT(year from sysdate)-extract(year from hiredate)||'년'|| 
+            ABS(EXTRACT(month from sysdate)-extract(month from hiredate))||'개월'
+            AS "Period of Employment"
+FROM emp;
+
+--입사일 순서대로 석차추출(오름차순)
+SELECT ename AS "Name",
+        hiredate AS "Hiredate",
+        RANK() OVER(order by hiredate) AS "Hiredate Rank"
+FROM emp;
+
+--부서별로 많이 받는 순의 급여 랭킹(오름차순)
+SELECT dept.deptno AS "Department No.",
+        dept.dname AS "Dept",
+        emp.empno AS "Employee No.",
+        emp.ename AS "Name",
+        emp.sal AS "Salary",
+        RANK() OVER(
+            PARTITION BY dept.deptno 
+            ORDER BY sal) AS "Rank"
+FROM emp, dept
+WHERE dept.deptno = emp.deptno
+    AND emp.sal IS NOT NULL;
+
+
+--직책별 인원수와 급여합계를 추출
+SELECT dept.dname AS "Dept",
+        COUNT(emp.ename) AS "Total members",
+        SUM(NVL(emp.sal,0)) AS "Total Department Salary"
+FROM dept, emp
+WHERE dept.deptno = emp.deptno
+GROUP BY dept.dname
+ORDER BY "Total Department Salary";
+
+--성별, 직책별로 평균 급여와 인원수를 출력하되, 사원과 대리 직책만 추출하되 인원수가 많은 순서대로 정렬
+SELECT sex AS "Sex",
+        job AS "Job",
+        AVG(NVL(sal, 0)) AS "Average Salary",
+        COUNT(*) AS "Count Member"
+FROM emp
+GROUP BY sex, job
+HAVING job in ('사원', '대리')
+ORDER BY sex, "Count Member";
+
+--성별, 직책별로 평균 급여와 인원수를 출력하되, 사원을 제외하고, 집계 인원수가 2명 이하인 것만 추출
+SELECT sex AS "Sex",
+        job AS "Job",
+        AVG(NVL(sal,0)) AS "Average Salary",
+        COUNT(*) AS "Count Member"        
+FROM emp
+GROUP BY sex, job
+HAVING job != '사원' AND COUNT(*) <= 2
+ORDER BY "Sex", "Count Member";
+
+--입사년도별로 평균급여를 추출
+SELECT TO_CHAR(hiredate, 'yy.mm.dd') AS "Hiredate",
+        AVG(NVL(sal, 0)) AS "Average Salary"
+FROM emp
+GROUP BY hiredate
+ORDER By "Average Salary" DESC;
+
+
+select rownum, emp.*
+from 
+        
+emp;
+--5명씩 평균급여 추출(ROWNUM 활용)
+SELECT AVG(NVL(sal, 0)) AS "Average"
+FROM emp
+GROUP by CEIL(ROWNUM/5);
+
+
+SELECT job AS "Job",
+        sex AS "Sex",
+        SUM(sal) AS "Total Salary"
+FROM emp
+GROUP BY ROLLUP(job, sex);
+
+
+--직책별 인원수
+SELECT
+    COUNT(DECODE(job, '과장',0)) AS "과장",
+        
+FROM emp;
+
+SELECT 
+    job AS "Job",
+    --SUM(DECODE(job, '과장', 
+      --      DECODE(deptno, 10,sal)
+        --    )) AS "Dept10"
+    SUM(
+        CASE
+            deptno WHEN 10 THEN sal ELSE 0
+        END) AS "Dept10",
+    
+    SUM(
+        CASE
+            deptno WHEN 20 THEN sal ELSE 0
+        END) AS "Dept20",
+    
+    SUM(
+        CASE
+            deptno WHEN 30 THEN sal ELSE 0
+        END) AS "Dept30",
+       
+    SUM(sal) AS "Total"
+
+FROM emp
+GROUP BY ROLLUP(job);
+
+
+--이름의 길이가 6자 이상인 사원의 정보를 이름, 이름 글자수, 업무를 검색
+SELECT ename AS "Name",
+        LENGTH(ename) AS "NameSTR",
+        job AS "Job"
+FROM emp
+WHERE LENGTH(ename) >=6;
+
+--SCOTT의 사원번호, 성명(소문자로), 담당업무(대문자로) 검색
+SELECT empno AS "EnpNO",
+        LOWER(ename) AS "name",
+        UPPER(job) AS "JOB"
+FROM emp;
+
+--DEPT 테이블에서 Loc 컬럼의 첫 글자만 대문자로 변환하여 검색
+SELECT INITCAP(loc) AS "Location"
+FROM dept;
+
+--사원번호,이름,업무,급여를 검색하되 EMPNO와 ENAME을 줄 바꿔서 검색
+SELECT ename AS "EmpNO",
+        empno AS "Name",
+        job AS "Job",
+        sal AS "Sal"
+FROM emp;
+
+--이름의 첫 글자가 ‘K’보다 크고 ‘Y’보다 작은 사원의 정보 검색
+SELECT ename AS "Name"
+FROM emp
+WHERE ename BETWEEN 'K%'  AND  'Y%';
+
+--사원번호,이름,이름의 길이,급여,급여의 길이 검색
+SELECT empno AS "EmpNO",
+        ename AS "Name",
+        LENGTH(ename) AS "Name Length",
+        sal AS "Salary",
+        LENGTH(sal) AS "Salary Length"
+FROM emp;
+
+-- 업무 중 ‘A’자의 위치를 검색, 두 번째 ‘A’자의 위치도 검색
+SELECT INSTR(job, 'A') AS "Job1",
+        INSTR(job, 'A', 1,2 ) AS "Job1"
+FROM emp;
+
+
+--이름의 검색 자릿수를 20으로 하고 오른쪽 빈칸에 ‘*’
+SELECT RPAD(ename, 20,'*') AS "Name"
+FROM emp;
+
+--담당 업무 중 좌측에 ‘A’를 삭제하고 급여 중 좌측의 1을 삭제한 후 검색
+SELECT LTRIM(job, 'A') AS "JOB",
+        LTRIM(sal, 1) AS "Salary"
+FROM emp;
+
+--담당 업무 중 우측에 ‘T’를 삭제하고 급여 중 우측의 0을 삭제한 후 검색
+SELECT RTRIM(job, 'T') AS "Job",
+        RTRIM(sal,0) AS "Salary"
+FROM emp;
+
+--이름 중에 ‘A’,’B’,’C’는 소문자로 바꿔서 검색하고 급여를 숫자가 아닌 글자로 검색(급여가 1425 이면 일사이오)
+--     Tip : translate() 이용
+
+SELECT TRANSLATE(ename, 'ABC','abc') AS "Name",
+        TO_CHAR(sal) AS "Sal"
+FROM emp;
+
+--JOB의 글자 중 ‘LE’를 ‘AL’로 바꿔서 검색
+SELECT REPLACE(job, 'LE', 'AL') AS "Job"
+FROM emp;
+
+--모든 사원의 이름과 급여를 연결(||)하여 검색하되 각 15자리씩 왼쪽을 공백으로 검색
+SELECT LPAD(ename, 15)||LPAD(sal, 15) AS "RAD"
+FROM emp;
+
+--숫자 1234.5678를 정수로 반올림하고 소수 첫째 자리까지 반올림과 절삭한 값을 검색
+SELECT ROUND(1234.5678) AS "Integer",
+        ROUND(1234.5678, 1) AS ".1",
+        TRUNC(1234.5678, 1)
+FROM dual;
+
+--숫자 -456.789를 정수로 올림하고 -123.78을 내림한 정수를 검색
+SELECT CEIL(-456.789),
+        FLOOR(-123.78)
+FROM dual;
+
+--급여를 30으로 나눈 나머지를 구하여 검색
+SELECT MOD(sal, 30)
+FROM emp;
+
+--모든 사원의 정보를 이름,업무,입사일, 입사한 요일을 검색
+SELECT ename,
+        job,
+        hiredate,
+        TO_CHAR(hiredate,'DAY')AS "hiredateWeek"
+FROM emp;
+
+--현재까지의 근무일수가 몇 주 몇 일인가 검색하라. 근무일수가 많은 사람순서로 검색하라.
+--     (예:총 근무일수가 20일이면 2주 6일이 검색되게 한다.)
+SELECT hiredate AS "My date",
+    ABS(EXTRACT(month from sysdate)-extract(month from hiredate))*4||'week '|| 
+            ABS(EXTRACT(day from sysdate)-extract(day from hiredate))||'day'
+            AS "Period of Employment"
+FROM emp;
+
+
+--현재까지의 근무 월수를 계산하여 정수로 검색하라.
+SELECT hiredate AS "My date",
+    ABS(EXTRACT(month from sysdate)-extract(month from hiredate))||'Month'
+            AS "Period of Employment"
+FROM emp;
+
+
+--입사일로부터 5개월이 지난 후 날짜를 ROUND 함수와 TRUNC함수를 이용하여 월을 기준으로 검색하라
+SELECT ADD_MONTHS(hiredate, 5)
+FROM emp;
+
+
+
+
 COMMIT;
-
-
-
-
-
-commit;
