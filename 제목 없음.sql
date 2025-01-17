@@ -399,7 +399,7 @@ GROUP BY ROLLUP(job, sex);
 
 --직책별 인원수
 SELECT
-    COUNT(DECODE(job, '과장',0)) AS "과장",
+    COUNT(DECODE(job, '과장',0)) AS "과장"
         
 FROM emp;
 
@@ -540,10 +540,482 @@ FROM emp;
 
 
 --입사일로부터 5개월이 지난 후 날짜를 ROUND 함수와 TRUNC함수를 이용하여 월을 기준으로 검색하라
-SELECT ADD_MONTHS(hiredate, 5)
+SELECT TRUNC(ADD_MONTHS(hiredate, 5), 'mm'), ROUND(ADD_MONTHS(hiredate, 5), 'mm')
+FROM emp;
+
+--입사일자로부터 돌아오는 금요일을 검색하라
+SELECT NEXT_DAY(hiredate, 6) AS "Next Friday"
+FROM emp;
+
+--입사한 달의 근무일수를 계산하여 검색하라, 단 토/일요일도 근무일수에 포함한다.
+SELECT LAST_DAY(hiredate)-hiredate AS "WORKDAYS"
+FROM emp;
+
+--입사날짜를 ‘1 Jan 1981’ 과 ‘1981년 01월 01일’의 형태로 검색하라.
+SELECT TO_CHAR(hiredate, 
+                'FM""dd" "mon" "yyyy"',
+                'NLS_DATE_LANGUAGE=ENGLISH') AS "ENG date",
+       TO_CHAR(hiredate,
+                '""yyyy"년 "mm"월 "dd"일') AS "KOR date"
+FROM emp;
+
+
+
+--입사일이 February 20, 1981과 May 1, 1981 사이에 입사한 사원의 이름,업무,입사일을 검색. 
+SELECT ename AS "Name",
+        job As "Job",
+        hiredate AS "Hiredate"
+FROM emp
+WHERE hiredate BETWEEN '81/02/20' AND '81/05/01';
+
+--위의 문제를 현재 세션을 February 20, 1981에 맞게 변경한 후에 검색하라.
+SELECT ename AS "Name",
+        job As "Job",
+        TO_CHAR(hiredate, 
+                'FM""Month" "dd" "yyyy"',
+                'NLS_DATE_LANGUAGE=ENGLISH') AS "Hiredate"
+FROM emp
+WHERE hiredate BETWEEN '81/02/20' AND '81/05/01';
+
+
+--연봉에 보너스를 합한 금액을 $를 삽입하고 3자리마다 ,를 검색하라.
+SELECT TO_CHAR(sal+NVL(comm, 0), '$999,999') AS "Total Salary"
+FROM emp;
+
+
+--JOB이 ANALYST 이면 수당으로 급여의 10%를 지급하고 
+--CLERK 이면 급여의 15% 지급, MANAGER이면 20% 지급하려고 한다. 
+--다른 업무는 보너스가 없다. 사원번호, 이름, 업무, 급여, 수당을 검색하라. (CASE문)
+SELECT empno AS "No",
+        ename AS "Name",
+        job AS "Job",
+        sal AS "Salary",
+        CASE
+            WHEN job = UPPER('ANALYST') THEN sal * 0.1
+            WHEN job = UPPER('CLERK') THEN sal * 0.15
+            WHEN job = UPPER('MANAGER') THEN sal * 0.2
+            ELSE 0
+        END AS "Incentive"
+FROM emp;
+
+
+-- 위 문제를 DECODE를 사용하여 검색하라
+SELECT empno AS "No",
+        ename AS "Name",
+        job AS "Job",
+        sal AS "Salary",
+        DECODE ( job, UPPER('ANALYST'), sal * 0.1,
+                    UPPER('CLERK'), sal * 0.15,
+                    UPPER('MANAGER'), sal * 0.2,
+                    0) AS "Incentive"
+FROM emp;
+
+
+--급여가 1000 이상 2000 이하이면 1500을 지급하고 그 외에는 800을 지급하라
+SELECT ename AS "Name",
+        sal AS "Salary",
+        CASE
+            WHEN sal BETWEEN 1000 AND 2000 THEN 1500
+            ELSE 800
+        END AS "Incentive"
+FROM emp;
+
+
+--현재 급여를 기준으로 입사한 달의 근무일수에 해당하는 급여를 산출하라. (일일 급여액 = 연 급여액/365)
+SELECT ename AS "Name",
+        
+        (LAST_DAY(hiredate) - hiredate) * (sal / 365) 
+        AS "First Salary"
 FROM emp;
 
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+-- EMP테이블에서 모든 SALESMAN에 대하여 
+-- 급여의 평균, 최고액, 최저액, 합계를 구하여 출력하라.
+SELECT AVG(NVL(sal, 0)) AS "Average",
+        MAX(sal) AS "Max",
+        MIN(sal) AS "Min",
+        SUM(NVL(sal, 0)) AS "Sum"
+FROM emp;
+
+--EMP 테이블에 등록되어 있는 인원수,COMM의 합계,전체 사원의 COMM 평균,
+--등록되어 있는 부서의 수를 구하여 출력하라.
+SELECT COUNT(*) AS "Count",
+        SUM(NVL(comm, 0)) AS "Sum Commision",
+        AVG(NVL(comm, 0)) AS "Average Commision",
+        COUNT(DISTINCT deptno) AS "Count Department"
+FROM emp;
+
+-- 부서별로 인원수, 평균급여, 최저 급여, 최고 급여를 구하여라.
+SELECT deptno AS "Department No.",
+        COUNT(empno) AS "Count Employee in Department",
+        AVG(sal) AS "Average Salary in Department",
+        MIN(sal) AS "Minimum Salary in Department",
+        MAX(sal) AS "Maximun Salary in Department"
+FROM emp
+GROUP BY deptno;
+
+
+--상기 문제에서 최대 급여가 3000 이상인 부서별로 출력하라.
+SELECT deptno AS "Department No.",
+        COUNT(empno) AS "Count Employee in Department",
+        AVG(sal) AS "Average Salary in Department",
+        MIN(sal) AS "Minimum Salary in Department",
+        MAX(sal) AS "Maximun Salary in Department"
+FROM emp
+GROUP BY deptno
+HAVING MAX(sal) >= 3000;
+
+--10번과 30번 부서에서 업무별 최소급여가 1500 이하인 업무와 최소급여를 출력하라.
+SELECT deptno AS "Department No.",
+        job AS "Job",
+        MIN(sal) AS "Minimum Salary"
+FROM emp
+GROUP BY job, deptno
+HAVING deptno IN(10, 30)
+ORDER BY "Department No.", "Minimum Salary";
+
+--부서별 인원이 4명 이상인 부서별 인원수, 급여의 합을 출력하라.
+SELECT deptno AS "Department",
+        COUNT(*) AS "Count Employee",
+        SUM(sal) AS "Total Salary"
+FROM emp
+GROUP BY deptno
+HAVING COUNT(*)>=4;
+
+--전체 급여가 5000을 초과하는 각 업무에 대해 업무와 급여 합계를 출력하라.
+--단, SALESMAN은 제외하고 급여 합계를 내림차순으로 정렬하라.
+SELECT job AS "Job",
+        SUM(sal) AS "Total Salary"
+FROM emp
+GROUP BY job
+HAVING SUM(sal) > 5000 
+    AND job != UPPER('SALESMAN');
+
+--부서별 평균 중 최대평균급여, 부서별 급여의 합 중 최대급여, 
+--전체 급여에서 최소 급여, 전체 급여 에서 최대 급여를 출력하라.
+SELECT deptno AS "Department",
+        SUM(sal),
+        MAX(AVG(NVL(sal,0))) AS "MAX of AVG Sal in Dept",
+        MAX(SUM(sal)) AS "MAX of Total Sal in Dept",
+        MIN(SUM(sal)) AS "MIN of SUM Salary",
+        MAX(SUM(sal)) AS "Total of MAX Salary"
+FROM emp
+GROUP BY deptno, sal) ;
+
+
+--부서별 업무별 급여의 평균을 출력하는 SELECT문장을 작성하라. (세자리 구분기호)
+SELECT job AS "Job",
+        TO_CHAR(AVG(DECODE(
+                    deptno, 10 ,NVL(sal,0))), '999,999') AS "deptNO 10",
+        TO_CHAR(AVG(DECODE(
+                    deptno, 20 ,NVL(sal,0))), '999,999') AS "deptNO 20",
+        TO_CHAR(AVG(DECODE(
+                    deptno, 30 ,NVL(sal,0))), '999,999') AS "deptNO 30",
+        TO_CHAR(AVG(NVL(sal, 0)), '999,999') AS "Total"
+FROM emp
+GROUP BY job
+ORDER BY job;
+
+--급여가 1000 이하인 인원수,1001에서 2000 사이의 인원수,2001에서
+--3000 사이의 인원수,3000 초과인 인원수를 출력하시오.
+SELECT COUNT(
+            CASE
+                WHEN sal > 3000 THEN empno
+                
+            END) AS "3000 초과",
+      COUNT  (
+            CASE
+                WHEN sal BETWEEN 2001 and 3000 THEN empno
+                
+            END) AS "3000~2001",
+      COUNT  (
+            CASE
+                WHEN sal BETWEEN 1001 and 2000 THEN empno
+                
+            END) AS "1001~2000",
+      COUNT  (
+            CASE
+                WHEN sal <= 1000 THEN empno
+                
+            END) AS "1000이"
+FROM emp;
+
+--부서별 급여평균과 업무별 급여평균과 매니저별 급여 평균을 출력.(Grouping sets를 이용)
+SELECT deptno AS "Dept No.",
+        job AS "Job",
+        mgr AS "Manager",
+        AVG(NVL(sal, 0)) AS "Average Salary"
+        
+FROM emp
+GROUP BY GROUPING SETS(deptno, job, mgr);
+
+
+--부서와 업무의 그룹별 인원 수와 부서와 매니저의 그룹별 인원수를 함께 출력.(Grouping sets 이용)
+SELECT deptno AS "Dept",
+        job As "Job",
+        mgr AS "Mgr",
+        COUNT(*)
+FROM emp
+GROUP BY GROUPING SETS((deptno, job), (job, mgr));
+
+--업무와 부서별 급여의 합과 평균을 출력하고 업무별 급여 합과 평균을 함께 출력(Grouping sets 이용)
+SELECT job AS "Job",
+        deptno AS "Dept",
+        SUM(sal) AS "Total",
+        AVG(NVL(sal,0)) AS "Average"
+FROM emp
+GROUP BY GROUPING SETS((job, deptno),job );
+
+--전체합계, 부서별 합계, 업무별 합계,업무별 부서별 합계 순서로 출력하라.
+SELECT deptno AS "Dept",
+        job AS "Job",
+        SUM(sal) AS "Total"
+FROM emp
+GROUP BY GROUPING SETS(deptno, job,(deptno, job), ());
+
+
+
+--부서별 매니저별 합계, 부서별 합계, 전체 합계 순서로 출력하라.
+SELECT deptno,
+        mgr,
+        SUM(sal)
+FROM emp
+GROUP BY ROLLUP (deptno, mgr)
+ORDER BY mgr is null, mgr;
+
+--직위가 동일한 사람의 수를 표시하는 질의를 작성한다.
+SELECT job AS "Job",
+        COUNT(job) AS "Count same job"
+FROM emp
+GROUP BY job
+HAVING COUNT(job)>1;
+
+--관리자 목록 없이 관리자 수만 표시하고 열 이름을 Number Of Managers로 지정한다
+SELECT COUNT(mgr) AS "Number Of Managers"
+FROM emp
+GROUP BY mgr;
+
+
+
+
+
+
+
+
+
+--EMP 테이블과 DEPT 테이블을
+--CARTESIAN PRODUCT로 사원번호,이름,업무,부서번호,부서명,근무지를 출력하라.
+SELECT e.empno AS "EMP No.",
+        e.ename AS "Name",
+        e.job AS "Job",
+        d.deptno AS "DEPT No.",
+        d.dname AS "DEPT Name",
+        d.loc AS "Location"
+FROM emp e, dept d;
+
+--EMP 테이블에서 사원번호, 이름 ,업무, 부서번호,부서명,근무지 출력하라.
+--단, 사원이 없는 부서의 부서번호도 출력하라.
+SELECT e.empno AS "EMP No.",
+        e.ename AS "Name",
+        e.job AS "Job",
+        d.deptno AS "DEPT No.",
+        d.dname AS "DEPT Name",
+        d.loc AS "Location"
+FROM emp e
+    RIGHT OUTER JOIN dept d
+    ON e.deptno = d.deptno;
+
+--SALESMAN의 사원번호,이름,급여,부서명,근무지를 출력하라.
+SELECT e.empno AS "EMP No.",
+        e.ename AS "Name",
+        e.sal AS "Salary",
+        d.dname AS "Department",
+        d.loc AS "Work Location"
+FROM emp e, dept d
+WHERE e.deptno = d.deptno AND e.job = UPPER('SALESMAN');
+
+--사원번호,이름,업무,급여,급여의 등급,하한 값,상한 값을 출력하라.
+SELECT e.empno AS "EMP No.",
+        e.ename AS "Name",
+        e.job AS "Job",
+        e.sal AS "Salary",
+        RANK() OVER(ORDER BY sal)
+FROM emp e;
+
+--EMP 테이블에서 SELF JOIN으로 상사를 출력하라. 
+--사원번호(EMPNO), 사원명(ENAME),상사 번호(MGR_NO),상사명(MGR_NAME) , 
+--상사가 없는 사람도 출력하라.
+SELECT sub.empno AS "EMP No.",
+        sub.ename AS "Name",
+        super.empno AS "MGR_NO",
+        super.ename AS "MGR_NAME"
+FROM emp sub
+    RIGHT OUTER JOIN emp super
+    ON sub.mgr = super.empno;
+
+--상사가 7698인 사원의 이름, 사원번호, 상사번호, 상사명을 출력하라.
+SELECT sub.empno AS "EMP No.",
+        sub.ename AS "Name",
+        super.empno AS "Superior No.",
+        super.ename AS "Superior"
+FROM emp sub
+    RIGHT OUTER JOIN emp super
+    ON sub.mgr = super.empno 
+WHERE super.empno = 7698 AND sub.empno IS NOT NULL;
+
+--NEW YORK에서 근무하고 있는 사원에 대해 이름, 업무, 급여, 부서명을 출력
+SELECT e.ename AS "Name",
+        e.job AS "Job",
+        e.sal AS "Salary",
+        d.dname AS "Department"
+FROM emp e
+    RIGHT OUTER JOIN dept d
+    ON e.deptno = d.deptno
+WHERE d.loc = UPPER('NEW YORK');
+
+--보너스를 받는 사원에 대해 이름, 업무, 급여, 부서명을 출력    
+SELECT e.ename AS "Name",
+        e.job AS "Job",
+        e.sal AS "Salary",
+        d.dname AS "Department"
+FROM emp e, dept d
+WHERE e.deptno = d.deptno 
+    AND e.comm IS NOT NULL;
+    
+--이름 중 L자를 가진 사원에 대해 이름, 업무, 부서명, 부서 위치를 출력    
+SELECT e.ename AS "Name",
+        e.job AS "Job",
+        d.dname AS "Department",
+        d.loc AS "Dept Location"
+FROM emp e
+    RIGHT OUTER JOIN dept d
+    ON e.deptno = d.deptno
+WHERE e.ename like UPPER('%L%');
+
+--사원번호, 이름, 업무, 부서번호, 부서명, 위치, 급여, 급여 등급을 출력하라.
+SELECT e.empno AS "EMP No.",
+        e.ename AS "Name",
+        e.job AS "Job",
+        e.deptno AS "Dept No.",
+        d.dname AS "Department",
+        d.loc As "Dept Location",
+        e.sal As "Salary",
+        s.grade AS "Salary Grade"
+FROM emp e, dept d, salgrade s
+WHERE e.deptno = d.deptno 
+    AND e.sal BETWEEN s.losal AND s.hisal;
+
+--SALES 부서에서 근무하는 사원번호, 이름, 부서번호, 부서명, 근무지역을 출력    
+SELECT e.empno AS "EMP No.",
+        e.ename AS "Name",
+        e.deptno AS "DEPT No.",
+        d.dname AS "Department",
+        d.loc AS "DEPT Location"
+FROM emp e, dept d
+WHERE e.deptno = d.deptno
+        AND d.dname = UPPER('SALES');
+        
+--업무가 MANAGER이거나 CLERK인 사원의 사원번호, 이름, 급여, 업무, 부서명, 급여등급을 출력하라.        
+SELECT e.empno AS "EMP No.",
+        e.ename AS "Name",
+        e.sal AS "Salary",
+        e.job AS "Job",
+        d.dname AS "Department",
+        s.grade AS "Sal Grade"
+FROM emp e, dept d, salgrade s
+WHERE (e.deptno = d.deptno
+        AND e.sal BETWEEN s.losal AND s.hisal)
+        AND (job IN (UPPER('MANAGER'), UPPER('CLERK')));
+
+--사원번호, 사원이름, 사원급여, 상사번호, 상사 이름, 상사의 업무를 출력하라. 
+--상사가 없는 사람도 출력하라.        
+SELECT sub.empno AS "EMP No.",
+        sub.ename AS "Name",
+        sub.sal AS "Salary",
+        super.empno AS "Superior EMP No.",
+        super.ename AS "Superior Name",
+        super.job AS "Superior Job"
+FROM emp super
+    RIGHT OUTER JOIN emp sub
+    ON sub.mgr = super.empno;
+        
+--EMP 테이블에서 그들의 상사보다 먼저 입사한 사원에 대해
+--사원이름, 사원의 입사일, 상사 이름, 상사 입사일을 출력
+SELECT sub.ename AS "Name",
+        sub.hiredate AS "Hiredate",
+        super.ename As "Superior Name",
+        super.hiredate AS "Superior Hiredate"
+FROM emp super, emp sub
+WHERE super.empno = sub.mgr
+        AND super.hiredate < sub.hiredate;        
+
+--사원의 급여와 사원의 급여만큼 ‘*’를 출력하라, * 하나는 100을 의미한다.
+col star  format A55
+SELECT e.ename,
+        d.dname,
+        e.sal/100,
+        RPAD('*', TRUNC(sal/100, 0), '*')
+FROM emp e, dept d
+WHERE e.deptno = d.deptno;
+
+--사원 테이블명을 E,상사 테이블명을 M으로 할 때 
+--사원번호(E.EMPNO), 사원이름, 사원 급여, 사원 급여등급, 상사번호(M.EMPNO),
+--상사이름, 상사 급여, 상사 급여 등급을 출력하라.  
+--단, 상사(M) 테이블에서 부하직원이 없는 사람도 출력하라.
+SELECT E.empno AS "EMP No.",
+        E.ename AS "Name",
+        E.sal AS "Salary",
+        S.grade AS "Sal Grade",
+        M.empno AS "MGR EMP No.",
+        M.ename AS "MGR Name",
+        M.sal AS "MGR Salary",
+        S.grade As "MGR Sal Grade"
+FROM emp E, emp M, salgrade S
+WHERE (E.mgr = M.empno) AND (E.sal BETWEEN S.losal AND S.hisal)
+        AND (M.sal BETWEEN S.losal AND S.hisal);
+
+--사원번호, 사원 이름, 사원의 급여,사원급여 등급, 상사번호, 상사 부서번호, 상사의 부서명을 
+--출력하라. 단, 상사가 없는 사람도 출력하라.
+SELECT sub.empno,
+        sub.ename,
+        sub.sal,
+        s.grade,
+        sub.mgr,
+        super.empno,
+        d.dname
+FROM emp super
+    RIGHT OUTER JOIN emp sub
+        ON super.empno = sub.mgr
+    RIGHT OUTER JOIN dept d
+        ON super.deptno = d.deptno AND sub.deptno = d.deptno,
+    salgrade s
+WHERE sub.sal BETWEEN s.losal AND s.hisal;
+
+--사원번호, 사원 이름, 사원의 부서번호,사원의 부서명, 
+--상사이름, 상사 부서번호, 상사의 근무지역을 출력하라. 
+--단, 사원테이블의 상사가 없는 사람도 출력하고 사원이 존재하지 않는 부서번호와 부서명도 출력하라.
+SELECT e.empno,
+        e.ename,
+        e.deptno,
+        d.dname,
+        m.ename,
+        m.empno,
+        d.loc
+FROM emp e, emp m, dept d
+WHERE (e.mgr = m.empno)
+        AND (d.deptno = e.deptno)
+        AND (d.deptno = m.deptno);
 COMMIT;
