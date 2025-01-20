@@ -1018,4 +1018,363 @@ FROM emp e, emp m, dept d
 WHERE (e.mgr = m.empno)
         AND (d.deptno = e.deptno)
         AND (d.deptno = m.deptno);
+
+
+-----------------------------------
+SELECT ename AS "Name",
+        sal AS "Salary"
+FROM emp
+WHERE sal = (SELECT MAX(sal) FROM emp);
+
+
+SELECT ename AS "Name",
+        sal AS "Salary"
+FROM emp
+WHERE sal > (SELECT AVG(NVL(sal, 0)) FROM emp);
+
+
+SELECT deptno AS "DEPT No.",
+        ename AS "Name",
+        sal AS "Salary"
+FROM emp
+WHERE deptno = 10
+        AND sal > (SELECT AVG(NVL(sal, 0)) FROM emp);
+
+
+SELECT deptno AS "DEPT No.",
+        ename AS "Name",
+        job AS "Job"
+FROM emp
+WHERE deptno 10
+    AND(
+        deptno = (SELECT deptno FROM emp WHERE ename = '이순신')
+        AND job = (SELECT job FROM emp WHERE ename = '이순신')
+        );
+
+SELECT deptno AS "DEPT NO.",
+        ename AS "Name",
+        sal
+FROM emp
+WHERE sal = (SELECT MAX(sal) FROM emp WHERE deptno = 10)
+        OR
+        sal = (SELECT MIN(sal) FROM emp WHERE deptno = 10);
+
+
+--각 부서에서 최대급여를 받는 사람 추출
+SELECT e1.deptno AS "DEPT No.",
+        d.dname AS "DEPT",
+        e1.ename AS "Name",
+        e1.sal AS "MAX Salary"
+FROM emp e1, dept d
+WHERE e1.deptno = d.deptno 
+        AND sal = (
+             SELECT MAX(sal)
+             FROM emp e2
+             WHERE e2.deptno = e1.deptno);
+
+
+SELECT d.dname AS "DEPT",
+        e1.ename AS "Name",
+        e1.sal AS "Salary"
+FROM emp e1, dept d
+WHERE e1.deptno = d.deptno
+        AND sal > (
+                    SELECT AVG(NVL(e2.sal, 0))
+                    FROM emp e2
+                    ) 
+ORDER BY "DEPT", "Salary";
+
+--각 부서에서 최대급여를 받는 사람을 추출
+SELECT d.deptno AS "DEPT No.",
+        d.dname AS "DEPT",
+        e1.ename AS "Name",
+        e1.sal AS "MAX Salary"
+FROM emp e1, dept d
+WHERE e1.deptno = d.deptno
+        AND e1.sal = 
+            (SELECT MAX(e2.sal) 
+             FROM emp e2
+             WHERE e2.deptno = e1.deptno
+             );
+
+
+
+
+
+--사원명, 직책, 소속된 직책의 최대급여 추출
+SELECT ename AS "Name",
+        job As "Job",
+        sal AS "MAX Salary"
+FROM emp e1
+WHERE sal = (
+                SELECT MAX(e2.sal)
+                FROM emp e2
+                WHERE e2.job = e1.job
+                )
+ORDER BY "MAX Salary" DESC;
+
+
+--급여를 가장 많이 받는 3명 추출
+SELECT ename AS "Name",
+        sal AS "TOP 3"
+FROM (SELECT ename,
+                sal
+        FROM emp
+        ORDER BY sal DESC
+        )
+WHERE ROWNUM <= 3;
+
+--가장 오래 근무한 사람 5명 추출
+SELECT d.dname AS "DEPT",
+        ename AS "Name",
+        hiredate AS "Hiredate"
+FROM (
+        SELECT ename, hiredate
+        FROM emp
+        ORDER BY hiredate DESC
+        ), dept d
+WHERE ROWNUM <= 5;
+
+
+--부하직원이 없는 사람을 추출
+SELECT e.empno AS "EMP No.",
+        e.ename AS "Name",
+        d.dname AS "DEPT",
+        e.job AS "Job"
+FROM emp e, dept d
+WHERE e.deptno = d.deptno
+    AND NOT EXISTS (
+                    SELECT e2.mgr
+                    FROM emp e2
+                    WHERE e2.mgr = e.empno)
+ORDER BY "EMP No.";
+
+--부서의 급여 합계가 전체 사원의 급여 합계의 30%를 초과하는 부서명과 급여합계를 추출
+SELECT d.dname AS "DEPT",
+        SUM(e.sal) AS "Total Salary"
+FROM emp e, dept d
+WHERE e.deptno = d.deptno
+GROUP BY d.dname
+HAVING SUM(e.sal) > (SELECT SUM(sal)*0.3 FROM emp);
+
+
+
+WITH dept_sum AS (SELECT d.dname AS "DEPT",
+                            SUM(e.sal) AS "total"
+                    FROM dept d, emp e
+                    WHERE e.deptno = d.deptno 
+                    GROUP BY d.dname)
+SELECT ds."DEPT", ds."total"
+FROM dept_sum ds
+WHERE ds."total" > (SELECT SUM(sal) * 0.3 FROM emp);
+
+
+
+
+
+
+----------------
+--이름이 ALLEN인 사원과 같은 업무를 하는 사람의 사원번호, 이름, 업무, 급여
+SELECT empno,
+        ename,
+        job,
+        sal
+FROM emp
+WHERE job = (SELECT job FROM emp WHERE ename = UPPER('ALLEN'));
+
+
+--EMP 테이블의 사원번호가 7521인 사원과 업무가 같고 
+--급여가 사원번호가 7934인 사원보다 많은 사원의 사원번호, 이름, 담당업무, 입사일, 급여
+SELECT empno,
+        ename,
+        job,
+        hiredate,
+        sal
+FROM emp
+WHERE job = (SELECT job FROM emp WHERE empno = 7521)
+        AND sal > (SELECT sal FROM emp WHERE empno= 7934);
+        
+        
+--EMP 테이블에서 급여의 평균보다 적은 사원의 사원번호, 이름, 업무, 급여, 부서번호
+SELECT empno,
+        ename,
+        job,
+        sal,
+        deptno
+FROM emp
+WHERE sal < (SELECT AVG(NVL(sal,0)) FROM emp);
+
+--부서별 최소급여가 20번 부서의 최소급여보다 작은 부서의 부서번호, 최소급여
+SELECT deptno,
+        "min"
+FROM (SELECT e.deptno, 
+        MIN(e.sal) AS "min"
+        FROM emp e 
+        GROUP BY deptno)
+WHERE "min" < (SELECT MIN(sal) FROM emp WHERE deptno = 20);
+
+--업무별 급여 평균 중 가장 작은 급여평균의 업무와 급여평균
+SELECT job,
+        MIN(sal)
+FROM emp
+GROUP BY job
+HAVING AVG(sal) = (SELECT MIN(AVG(NVL(sal,0))) FROM emp GROUP BY job);
+
+
+--업무별 최대 급여를 받는 사원의 사원번호, 이름, 업무, 입사일, 급여, 부서번호
+SELECT empno,
+        ename,
+        job,
+        hiredate,
+        job,
+        deptno
+FROM emp
+WHERE sal IN (SELECT MAX(sal) FROM emp GROUP BY job);
+
+
+--30번 부서의 최소급여를 받는 사원보다 많은 급여를 받는
+--사원의 사원번호, 이름, 업무, 입사일, 급여, 부서번호, 단 30번 부서는 제외
+SELECT empno,
+        ename,
+        job,
+        hiredate,
+        sal,
+        deptno
+FROM emp
+WHERE sal > (SELECT MIN(sal) FROM emp WHERE deptno = 30)
+        AND deptno != 30;
+
+--급여와 보너스가 30번 부서에 있는 사원의 급여와
+--보너스가 같은 사원을 30번 부서의 사원은 제외하고 출력하라
+SELECT ename
+FROM emp
+WHERE (sal, comm) IN (SELECT sal, comm FROM emp WHERE deptno = 30)
+        AND deptno != 30;
+        
+        
+--BLAKE와 같은 부서에 있는 모든 사원의 이름과 입사일자를 출력        
+SELECT ename,
+        hiredate
+FROM emp
+WHERE deptno = (SELECT deptno FROM emp WHERE ename=UPPER('BLAKE'));
+
+--평균급여 이상을 받는 모든 사원에 대해 사원의 번호와 이름을 출력, 급여가 많은 순서로..
+SELECT empno,
+        ename,
+        sal
+FROM emp
+WHERE sal >= (SELECT AVG(NVL(sal, 0)) FROM emp)
+ORDER BY sal DESC;
+
+--이름에 T가 있는 사원이 근무하는 부서에서 근무하는 모든 사원에 대해
+--사원번호, 이름, 급여를 출력, 사원번호 순서로 출력
+SELECT empno,
+        ename,
+        sal
+FROM emp
+WHERE deptno IN (SELECT deptno FROM emp WHERE ename LIKE '%T%' GROUP BY deptno);
+
+--부서위치가 CHICAGO인 모든 사원에 대해 이름, 업무, 급여 출력
+SELECT e.ename,
+        e.job,
+        e.sal,
+        d.loc
+FROM emp e, dept d
+WHERE d.loc = UPPER('CHICAGO');
+
+--KING에게 보고하는 모든 사원의 이름과 급여를 출력
+SELECT e.ename,
+        e.sal,
+        m.ename
+FROM emp e, emp m
+WHERE m.empno = e.mgr
+        AND m.ename = UPPER('KING');
+SELECT ename,
+        sal
+FROM emp
+WHERE mgr IN (SELECT empno FROM emp WHERE ename = UPPER('KING'));
+
+--FORD와 업무와 월급이 같은 사원의 모든 정보 출력        
+SELECT *
+FROM emp
+WHERE (job, sal) IN (SELECT job, sal FROM emp WHERE ename = UPPER('FORD'));
+
+--업무가 JONES와 같거나 월급이 FORD 이상인 사원의 이름, 업무, 부서번호, 급여 출력
+SELECT ename,
+        job,
+        deptno,
+        sal
+FROM emp
+WHERE job = (SELECT job FROM emp WHERE ename = UPPER('JONES'))
+        OR
+        sal >= (SELECT sal FROM emp WHERE ename = UPPER('FROD'));
+        
+--SCOTT 또는 WARD와 월급이 같은 사원의 이름, 업무, 급여를 출력        
+SELECT ename,
+        job,
+        sal
+FROM emp
+WHERE sal = (SELECT sal FROM emp WHERE ename IN ('SCOTT', 'WARD'));
+
+--SALES에서 근무하는 사원과 같은 업무를 하는 사원의 이름, 업무, 급여, 부서번호 출력
+SELECT ename,
+        job,
+        sal,
+        deptno
+FROM emp
+WHERE job IN (SELECT job FROM emp, dept WHERE dname='SALES');
+
+--사원번호, 사원명, 부서명, 소속부서 인원수, 업무, 소속 업무 급여평균,급여를 출력
+SELECT e.empno,
+        e.ename,
+        d.dname,
+        (SELECT COUNT(*) FROM emp e1 WHERE e1.deptno = d.deptno) AS "Count",
+        job,
+        (SELECT AVG(NVL(sal,0)) FROM emp e2 WHERE e2.deptno = d.deptno) AS "AVG Sal",
+        sal      
+FROM emp e, dept d
+WHERE e.deptno = d.deptno;        
+
+
+--사원번호, 사원명, 부서번호, 업무, 급여, 자신의 소속 업무 평균급여를 출력
+SELECT empno,
+        ename,
+        deptno,
+        job,
+        sal,
+        (SELECT AVG(sal) FROM emp e WHERE e.job = s.job) AS "AVG sal"
+FROM emp s;
+
+--최소한 한 명의 부하직원이 있는 관리자의 사원번호, 이름, 입사일자, 급여 출력
+SELECT empno,
+        ename,
+        hiredate,
+        sal
+FROM emp m
+WHERE EXISTS (SELECT 1 FROM emp e WHERE e.mgr=m.empno);
+
+--부하직원이 없는 사원의 사원번호, 이름, 업무, 부서번호 출력
+SELECT empno,
+        ename,
+        job,
+        deptno
+FROM emp m
+WHERE NOT EXISTS (SELECT 1 FROM emp e WHERE e.mgr = m.empno);
+
+--BLAKE의 부하직원의 이름, 업무, 상사번호 출력
+SELECT e.ename,
+        e.job,
+        e.mgr
+FROM emp e
+WHERE e.mgr = (SELECT m.empno FROM emp m WHERE m.ename = UPPER('BLAKE'));
+
+
+--BLAKE와 같은 상사를 가진 사원의 이름, 업무, 상사번호 출력
+SELECT e.ename,
+        e.job,
+        e.mgr
+FROM emp e
+WHERE e.mgr = (SELECT m.mgr FROM emp m WHERE m.ename = UPPER('BLAKE'));
+
+
 COMMIT;
