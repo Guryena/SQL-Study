@@ -1377,4 +1377,97 @@ FROM emp e
 WHERE e.mgr = (SELECT m.mgr FROM emp m WHERE m.ename = UPPER('BLAKE'));
 
 
+--고객의 담당자가 없는 고객은 13번 사원으로 변경(*test)
+CREATE TABLE customer_copy AS SELECT * FROM customer WHERE 1=1;
+SELECT * FROM customer_copy;
+UPDATE customer_copy SET cmgr=13 WHERE cmgr IS NULL;
+
+--13번 담당자를 갖는 고객의 담당자를 해약
+SELECT * FROM customer_copy;
+UPDATE customer_copy SET cmgr = NULL WHERE cmgr = 13;
+
+--직책이 사원인 사원들의 원본 정보를 입력
+CREATE TABLE emp_copy_junior AS SELECT * FROM emp WHERE 1=1
+                AND ( job = '사원');
+SELECT * FROM emp_copy_junior;
+
+
+--17번 사원의 부서와 같은 사원들의 직책을 17번 사원의 직책으로 변경
+CREATE TABLE emp_copy AS SELECT * FROM emp WHERE 1=1;
+SELECT * FROM emp_copy;
+UPDATE emp_copy
+SET job = (SELECT job FROM emp_copy WHERE empno = 17) 
+WHERE deptno = (SELECT deptno FROM emp_copy WHERE empno = 17);
+
+--영업부 사원들의 급여를 10% 인상
+SELECT * FROM emp_copy;
+UPDATE emp_copy
+SET sal = sal*1.1
+WHERE deptno = (SELECT d.deptno FROM dept d WHERE dname = '영업부');
+
+--관리부서 사원 중에서 기업의 평균급여보다 낮은 사원들 배제
+SELECT * FROM emp_copy;
+SELECT * FROM dept;
+DELETE FROM emp_copy
+WHERE deptno = 
+            (SELECT deptno FROM dept WHERE dname = '관리부')
+        AND sal < (SELECT AVG(NVL(sal,0)) FROM emp);
+
+--총무부 사원들의 급여를 자신이 속한 직책의 평균급여로 변경
+SELECT * FROM emp_copy;
+
+UPDATE emp_copy 
+UPDATE emp_copy 
+SET sal = (SELECT AVG(NVL(sal, 0)) 
+            FROM emp_copy 
+            GROUP BY deptno 
+            HAVING deptno =
+                    (SELECT deptno FROM dept WHERE dname = '총무부'))
+WHERE deptno = (SELECT deptno FROM dept WHERE dname = '총무부');
+
+
+--emp 테이블과 비교하여 사원 정보가 emp_10 테이블에 존재하면 10% 인상, 아니면 등록하라
+CREATE TABLE emp_10 AS SELECT * FROM emp WHERE 1=1;
+SELECT * FROM emp_10;
+
+MERGE INTO emp_10 e10
+USING emp e
+ON ( e10.empno = e.empno)
+WHEN MATCHED THEN
+    UPDATE SET e10.sal = e10.sal * 1.1
+WHEN NOT MATCHED THEN
+    INSERT VALUES SELECT * FROM emp;
+    
+    
+--2번 사원의 하위 조직도
+SELECT level, empno, ename, deptno, 
+        LPAD(' ',(level-1)*2,' ')||job AS job
+FROM emp
+START WITH empno = 2
+CONNECT BY mgr = prior empno;
+
+
+DESC all_users;
+
+DESC user_users;
+
+
+
+
+DESC user_cons_columns; 
+DESC user_constraints;
+
+DESC user_indexes; 
+DESC user_ind_columns; 
+
+
+SELECT cc.table_name, cc.column_name, 
+        c.constraint_name, c.constraint_type
+FROM user_cons_columns cc, user_constraints c
+WHERE cc.constraint_name = c.constraint_name
+ORDER BY 1;
+
+
+
+
 COMMIT;
